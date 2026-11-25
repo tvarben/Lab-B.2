@@ -11,13 +11,11 @@
 ## 2. Project facts
 | Course | Lab | Platform | Architecture | Grade target | Primary API |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| HI1033 | B:2 | Android (Kotlin + Jetpack Compose) | MVVM + Repository | Higher grade (A / VG) | SMHI (KTH proxy for dev; real SMHI API for submission) |
+| HI1033 | B:2 | Android (Kotlin + Jetpack Compose) | MVVM + Repository | Higher grade (A / VG) | Open-Meteo (Forecast + Geocoding) |
 
-- **Weather API (Real)**: `https://opendata-download-metfcst.smhi.se/`
-- **Geocoding API (Real)**: `https://www.smhi.se/wpta/backend_solr/autocomplete/search/{place}`
-- **Dev Proxy (Testing only — replace before submission)**:
-  - Forecast: `https://maceo.sth.kth.se/weather/forecast?lonLat=lon/14.333/lat/60.383`
-  - Search: `https://maceo.sth.kth.se/weather/search?location=Sigfridstorp`
+- **Weather API**: `https://api.open-meteo.com/v1/forecast` (no API key required)
+- **Geocoding API**: `https://geocoding-api.open-meteo.com/v1/search` (no API key required)
+- *(Note: SMHI autocomplete and `pmp3g` v2 endpoints returned HTTP 404 on 2026-11-25, and `geocode.maps.co` required an API key (HTTP 401), so we switched to Open-Meteo per our fallback plan.)*
 
 ## 3. Requirements checklist
 ### Basic Requirements
@@ -56,25 +54,29 @@
 ## 4. Component specs (spec-first principle)
 *(Write each component's purpose, inputs/outputs, edge cases, test ideas, and requirement IDs here BEFORE coding it.)*
 
-### Example template:
-```markdown
-### ComponentName
-- Purpose: ...
-- Inputs / Outputs: ...
-- Edge cases: ...
-- Test ideas: ...
-- Requirements: ...
-```
+### CoordinateValidator (Core)
+- **Purpose:** Validate user-entered latitude and longitude strings before making an API request.
+- **Inputs / Outputs:** `(latInput: String, lonInput: String) -> ValidationResult` (either `Valid(lat: Double, lon: Double)` or `Invalid(reason: String)`).
+- **Edge cases:** Empty/blank strings, non-numeric text, `NaN`/`Infinity`, comma vs. dot decimal separator, out-of-range coordinates (`lat < -90 || lat > 90`, `lon < -180 || lon > 180`).
+- **Test ideas:** Valid decimals (`"59.33", "18.07"`), negative coordinates (`"-33.86", "151.20"`), out-of-range (`"91.0", "0.0"`), garbage text (`"abc", "18.0"`), blank input.
+- **Requirements:** D-09, D-11
+
+### WeatherMapper (Core)
+- **Purpose:** Transform Open-Meteo `ForecastDto` (parallel arrays in `hourly` and `daily`) and `GeocodingResponseDto` into immutable internal domain models (`WeatherForecast`, `HourlyForecast`, `DailyForecast`, `PlaceResult`), grouping today's hours separately from the 7-day daily overview.
+- **Inputs / Outputs:** `(dto: ForecastDto, locationName: String, currentDate: LocalDate, currentHourPrefix: String) -> WeatherForecast`
+- **Edge cases:** Missing/null fields in JSON arrays, mismatched array lengths (e.g., `temperature_2m` shorter than `time`), empty `hourly` or `daily` lists, unknown WMO `weather_code`.
+- **Test ideas:** Maps valid 7-day response into today's hourly list + 7 daily summaries; handles mismatched array lengths without crashing; maps missing/null optional fields safely; maps unknown WMO codes to an `UNKNOWN` condition.
+- **Requirements:** D-02, D-03, D-07, D-11, D-12
 
 ## 5. Open questions
-- [ ] Inspect SMHI forecast JSON and autocomplete JSON responses to confirm exact parameter names (`t`, `Wsymb2`, `ws`, `pmean`, etc.) and coordinate rounding rules.
-- [ ] Decide whether to start against KTH proxy (`maceo.sth.kth.se`) during early dev and switch base URLs to real SMHI endpoints before final testing.
+- [x] Inspect SMHI and Open-Meteo JSON responses to confirm endpoints and exact parameter names.
+- [ ] Decide which UI preferences to include in Settings alongside refresh rate (e.g., °C/°F unit toggle, wind unit m/s vs km/h).
 
 ## 6. Decision log
 | Date | Decision | Rationale / Trade-off |
 | :--- | :--- | :--- |
 | 2026-11-25 | Kotlin + Jetpack Compose + MVVM | Matches lab Android recommendation; clean separation between Compose UI, `StateFlow` in ViewModel, and Repository. |
-| 2026-11-25 | SMHI API (with KTH proxy for dev) | Swedish weather + place autocomplete; fallback to Open-Meteo if needed. |
+| 2026-11-25 | Open-Meteo (Forecast + Geocoding) | SMHI autocomplete & `pmp3g` v2 returned HTTP 404 and `geocode.maps.co` returned 401 (API key required). Open-Meteo works out-of-the-box with no key and provides both hourly and 7-day daily data. |
 | 2026-11-25 | Retrofit + `kotlinx.serialization` | Declarative HTTP interface, type-safe JSON DTOs, minimal boilerplate. |
 | 2026-11-25 | Preferences DataStore | Simpler than Room for caching the latest forecast JSON, favourites, and settings; avoids SQL/DAO boilerplate while keeping persistence clean and explainable. |
 
@@ -83,46 +85,46 @@
 
 | # | Question | Code location | Test name |
 | :--- | :--- | :--- | :--- |
-| Q1 | Walk through the function that makes the API request. Where is it, and what does it return? | | |
-| Q2 | How is the JSON response parsed into your data model? Show the parsing code. | | |
-| Q3 | What fields from the API response does your app use, and what does it ignore? Why those? | | |
-| Q4 | What happens if the API returns a successful HTTP 200 but the JSON is missing a field your model expects? | | |
-| Q5 | Trace a complete data flow from the user pressing "search" to the forecast appearing on screen. | | |
-| Q6 | How does your app handle caching — what is stored locally, and when is it refreshed? | | |
-| Q7 | Where does the fetched weather data live while the app is running? Show the declaration. | | |
-| Q8 | What happens to the displayed data when the user searches for a new city? | | |
-| Q9 | How does the UI know when new data has arrived? Trace the update from data layer to screen. | | |
-| Q10 | What state is preserved if the user leaves the app and returns? | | |
-| Q11 | Where in the code is the loading state managed? How do you prevent showing stale data while a new request is in flight? | | |
-| Q12 | If the user rapidly searches for two cities, what happens? Can a race condition occur, and how do you guard against it? | | |
-| Q13 | What does the app display if the network request times out? | | |
-| Q14 | Where do you distinguish between a network error and an API error response (e.g., HTTP 404 or 500)? | | |
-| Q15 | What happens if the user has no internet connection and opens the app for the first time? | | |
-| Q16 | What happens if they open it a second time, after having successfully loaded data before? | | |
-| Q17 | Where is the error state declared, and how does it flow to the UI? | | |
-| Q18 | What was the hardest error case to handle? Show the code. | | |
-| Q19 | Show the MVVM layers in your code: View, ViewModel, Model/Repository. | | |
-| Q20 | Why is the network call not made directly from the View? | | |
-| Q21 | Where in the code is testable logic separated from UI code? What made that separation easy or hard? | | |
-| Q22 | How does navigation between screens work? Why does the ViewModel not navigate itself? | | |
-| Q23 | Open `SPEC.md`. Walk through how one requirement ID maps to the code that implements it. | | |
-| Q24 | What would you change about your architecture if you had to add hourly forecast support tomorrow? | | |
-| Q25 | Show a function the AI helped you write. Explain it line by line in your own words. | | |
+| Q1 | Walk through the function that makes the API request. Where is it, and what does it return? | `WeatherRepository.getForecast()` & `OpenMeteoForecastApi.getForecast()` | `WeatherRepositoryTest.successfulFetch_savesToLocalStorage` |
+| Q2 | How is the JSON response parsed into your data model? Show the parsing code. | `OpenMeteoDtos.kt` & `WeatherMapper.mapForecast()` | `WeatherMapperTest.mapForecast_groupsTodayHourlyAndDailyOverview` |
+| Q3 | What fields from the API response does your app use, and what does it ignore? Why those? | `OpenMeteoDtos.kt` (`hourly`, `daily`, `results`) | `WeatherMapperTest.mapForecast_groupsTodayHourlyAndDailyOverview` |
+| Q4 | What happens if the API returns a successful HTTP 200 but the JSON is missing a field your model expects? | `OpenMeteoDtos.kt` (defaults/nullables) & `WeatherMapper.mapForecast()` | `WeatherMapperTest.mapForecast_handlesMismatchedArraysAndUnknownCodesSafely` |
+| Q5 | Trace a complete data flow from the user pressing "search" to the forecast appearing on screen. | `HomeScreen.kt` -> `WeatherViewModel.submitSearch()` -> `WeatherRepository.getForecast()` | |
+| Q6 | How does your app handle caching — what is stored locally, and when is it refreshed? | `DataStoreWeatherStorage` & `WeatherRepository.getForecast()` | `WeatherRepositoryTest.successfulFetch_savesToLocalStorage` |
+| Q7 | Where does the fetched weather data live while the app is running? Show the declaration. | `WeatherViewModel._uiState` (`MutableStateFlow<WeatherUiState>`) | |
+| Q8 | What happens to the displayed data when the user searches for a new city? | `WeatherViewModel.fetchForecast()` | |
+| Q9 | How does the UI know when new data has arrived? Trace the update from data layer to screen. | `WeatherViewModel.uiState` -> `MainActivity` (`collectAsState()`) -> `HomeScreen` | |
+| Q10 | What state is preserved if the user leaves the app and returns? | `DataStoreWeatherStorage` (last forecast, favourites, settings) | |
+| Q11 | Where in the code is the loading state managed? How do you prevent showing stale data while a new request is in flight? | `WeatherUiState.isLoadingForecast` in `WeatherViewModel.fetchForecast()` | |
+| Q12 | If the user rapidly searches for two cities, what happens? Can a race condition occur, and how do you guard against it? | `forecastJob?.cancel()` & `placeSearchJob?.cancel()` in `WeatherViewModel.kt` | |
+| Q13 | What does the app display if the network request times out? | `WeatherRepository.classifyException()` (`SocketTimeoutException`) -> `HomeScreen` error banner | `WeatherRepositoryTest.timeoutAndParseErrors_areClassifiedDistinctly` |
+| Q14 | Where do you distinguish between a network error and an API error response (e.g., HTTP 404 or 500)? | `WeatherRepository.classifyException()` (`HttpException` vs `IOException`) | `WeatherRepositoryTest.http500Error_distinguishesHttpErrorAndProvidesCache` |
+| Q15 | What happens if the user has no internet connection and opens the app for the first time? | `WeatherRepository.getForecast()` (`OFFLINE`, no cache) -> `EmptyOrErrorInitialState` | `WeatherRepositoryTest.offlineWithNoCache_returnsOfflineError` |
+| Q16 | What happens if they open it a second time, after having successfully loaded data before? | `WeatherViewModel.loadInitialCachedForecast()` & `WeatherRepository.getForecast()` | `WeatherRepositoryTest.offlineWithCache_returnsCachedSuccess` |
+| Q17 | Where is the error state declared, and how does it flow to the UI? | `WeatherUiState.errorMessage` -> `StatusBanners` / `EmptyOrErrorInitialState` | |
+| Q18 | What was the hardest error case to handle? Show the code. | `WeatherMapper.mapForecast()` (mismatched parallel arrays) / `WeatherRepository.classifyException()` | `WeatherMapperTest.mapForecast_handlesMismatchedArraysAndUnknownCodesSafely` |
+| Q19 | Show the MVVM layers in your code: View, ViewModel, Model/Repository. | `ui/screens/`, `ui/viewmodel/WeatherViewModel.kt`, `model/` & `data/WeatherRepository.kt` | |
+| Q20 | Why is the network call not made directly from the View? | `HomeScreen.kt` -> `WeatherViewModel.kt` -> `WeatherRepository.kt` | |
+| Q21 | Where in the code is testable logic separated from UI code? What made that separation easy or hard? | `CoordinateValidator.kt`, `WeatherMapper.kt`, `WeatherRepository.kt` (interfaces) | `CoordinateValidatorTest`, `WeatherMapperTest`, `WeatherRepositoryTest` |
+| Q22 | How does navigation between screens work? Why does the ViewModel not navigate itself? | `WeatherNavHost.kt` (`NavHost` + `Screen` routes) | |
+| Q23 | Open `SPEC.md`. Walk through how one requirement ID maps to the code that implements it. | `SPEC.md` Section 3 & 4 -> e.g. `D-09` -> `CoordinateValidator.kt` | `CoordinateValidatorTest` |
+| Q24 | What would you change about your architecture if you had to add hourly forecast support tomorrow? | Already supported via `WeatherMapper.mapForecast()` & `HourlyForecastRow` | |
+| Q25 | Show a function the AI helped you write. Explain it line by line in your own words. | *(Student picks function during inspection)* | |
 | Q26 | Open `SPEC.md` and show us the AI meta-instructions at the top. Walk us through one requirement and find the code that implements it. | `SPEC.md` Section 1 & 3 | |
-| Q27 | Where did the AI suggest something you pushed back on or changed? What was your reasoning? | | |
-| Q28 | How did you verify that AI-generated code actually works correctly? Show a test case. | | |
-| Q29 | What was the most effective prompt you wrote during this lab? What made it work? | | |
-| Q30 | If you were starting this lab again with the same AI tools, what would you do differently? | | |
+| Q27 | Where did the AI suggest something you pushed back on or changed? What was your reasoning? | *(Student documents in `LLM_PROCESS.md`)* | |
+| Q28 | How did you verify that AI-generated code actually works correctly? Show a test case. | `app/src/test/java/se/kth/hi1033/weatherapp/` | `WeatherRepositoryTest`, `WeatherMapperTest` |
+| Q29 | What was the most effective prompt you wrote during this lab? What made it work? | *(Student documents in `LLM_PROCESS.md`)* | |
+| Q30 | If you were starting this lab again with the same AI tools, what would you do differently? | *(Student documents in `REFLECTION.md`)* | |
 
 ## 8. Plan and status
 | Phase | Goal | Status |
 | :--- | :--- | :--- |
-| Phase 0 | Project setup, `SPEC.md`, `STYLE.md`, git init, API JSON inspection | In progress |
-| Phase 1 | Domain models, JSON parser/mapper, hourly/daily grouping, coordinate validation + unit/mutation tests | Pending |
-| Phase 2 | Retrofit service, DataStore cache, `ConnectivityManager`, Repository error handling + unit tests | Pending |
-| Phase 3 | `WeatherViewModel` (`StateFlow`, search cancellation, favourites, settings) | Pending |
-| Phase 4 | Jetpack Compose UI (Home, Detail, Favourites, Settings), portrait/landscape, phone/tablet | Pending |
-| Phase 5 | Emulator verification, 20 UX scenarios, `README.md`, `TEST_REPORT.md`, `LLM_PROCESS.md`, `REFLECTION.md` | Pending |
+| Phase 0 | Project setup, `SPEC.md`, `STYLE.md`, git init, API JSON inspection | Done |
+| Phase 1 | Domain models, JSON parser/mapper, hourly/daily grouping, coordinate validation + unit tests | Code & tests written (pending student review & Android Studio test run) |
+| Phase 2 | Retrofit service, DataStore cache, `ConnectivityManager`, Repository error handling + unit tests | Code & tests written (pending student review & Android Studio test run) |
+| Phase 3 | `WeatherViewModel` (`StateFlow`, search cancellation, favourites, settings) | Code written (pending student review) |
+| Phase 4 | Jetpack Compose UI (Home, Detail, Favourites, Settings), portrait/landscape, phone/tablet | Code written (pending student review & emulator check) |
+| Phase 5 | Emulator verification, 20 UX scenarios, mutation tests, `TEST_REPORT.md`, `LLM_PROCESS.md`, `REFLECTION.md` | Pending (Student) |
 
 ## 9. End-of-session ritual
 1. Summarise the session: what was coded, tested, or designed (1–2 sentences).
