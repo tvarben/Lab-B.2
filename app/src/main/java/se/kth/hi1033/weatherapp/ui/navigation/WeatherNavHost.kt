@@ -36,6 +36,7 @@ sealed class Screen(val route: String, val label: String, val icon: ImageVector?
     }
 }
 
+//Q22 Low coupling, clear separation of concerns. One big ViewModel is not clear separation of responsibility
 private val bottomNavItems = listOf(Screen.Home, Screen.Favourites, Screen.Settings)
 
 @Composable
@@ -73,7 +74,7 @@ fun WeatherNavHost(
             }
         }
     ) { innerPadding ->
-        NavHost(
+        NavHost( //Q22
             navController = navController,
             startDestination = Screen.Home.route,
             modifier = Modifier.padding(innerPadding)

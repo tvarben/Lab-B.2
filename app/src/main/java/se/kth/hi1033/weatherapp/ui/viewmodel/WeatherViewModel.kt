@@ -28,7 +28,8 @@ class WeatherViewModel(
     private val repository: WeatherRepository
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(WeatherUiState())
+    private val _uiState = MutableStateFlow(WeatherUiState()) //Q7, weather data lives here while app is running.
+    // Q9 -> MainActivity -> collectAsState() -> HomeScreen
     val uiState: StateFlow<WeatherUiState> = _uiState.asStateFlow()
 
     private var forecastJob: Job? = null
@@ -54,7 +55,7 @@ class WeatherViewModel(
         }
     }
 
-    private fun loadInitialCachedForecast() {
+    private fun loadInitialCachedForecast() { //Q16 load the cached forecast because it gets saved once app is opened
         viewModelScope.launch {
             val cached = repository.loadCachedForecast()
             if (cached != null) {
@@ -110,7 +111,7 @@ class WeatherViewModel(
     }
 
     private fun searchCity(query: String) {
-        placeSearchJob?.cancel()
+        placeSearchJob?.cancel() //Q12, cancel ongoing job
         if (query.trim().isEmpty()) {
             _uiState.update { it.copy(inputError = "Enter a city name.") }
             return
@@ -181,12 +182,12 @@ class WeatherViewModel(
     }
 
     private fun fetchForecast(latitude: Double, longitude: Double, locationName: String) {
-        // Cancel any in-flight request to prevent stale results overwriting newer searches.
-        forecastJob?.cancel()
+        // Q8. cancel any in-flight request to prevent stale results overwriting newer searches.
+        forecastJob?.cancel()  //Q12 ongoing forecast api retrieval
         forecastJob = viewModelScope.launch {
             _uiState.update {
                 it.copy(
-                    isLoadingForecast = true,
+                    isLoadingForecast = true, //Q11
                     errorMessage = null,
                     statusNotice = null
                 )
@@ -195,7 +196,7 @@ class WeatherViewModel(
                 is WeatherResult.Success -> {
                     _uiState.update {
                         it.copy(
-                            isLoadingForecast = false,
+                            isLoadingForecast = false, //Q11
                             forecast = result.data,
                             isFromCache = result.isFromCache,
                             statusNotice = result.notice,
@@ -206,7 +207,7 @@ class WeatherViewModel(
                 is WeatherResult.Error -> {
                     _uiState.update {
                         it.copy(
-                            isLoadingForecast = false,
+                            isLoadingForecast = false, //Q11
                             forecast = result.cachedFallback ?: it.forecast,
                             isFromCache = (result.cachedFallback ?: it.forecast) != null,
                             errorMessage = result.message

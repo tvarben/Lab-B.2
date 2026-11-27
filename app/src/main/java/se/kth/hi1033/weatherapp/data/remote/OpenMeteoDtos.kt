@@ -2,7 +2,8 @@ package se.kth.hi1033.weatherapp.data.remote
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-
+//Q2 DTOs that are used by the domain model
+//Q3 we use nullables or defaults to handle missing fields that can be caught in getForecast
 @Serializable
 data class ForecastResponseDto(
     val latitude: Double = 0.0,
@@ -38,12 +39,12 @@ data class DailyDto(
     val windSpeed10mMax: List<Double?> = emptyList()
 )
 
-@Serializable
+@Serializable //not sure about this one
 data class GeocodingResponseDto(
     val results: List<GeocodingResultDto> = emptyList()
 )
 
-@Serializable
+@Serializable //not sure about this one
 data class GeocodingResultDto(
     val id: Long = 0L,
     val name: String = "",

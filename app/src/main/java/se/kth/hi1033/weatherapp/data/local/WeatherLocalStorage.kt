@@ -18,15 +18,15 @@ import se.kth.hi1033.weatherapp.model.WeatherForecast
 private val Context.weatherDataStore: DataStore<Preferences> by preferencesDataStore(name = "weather_prefs")
 
 interface WeatherLocalStorage {
-    suspend fun saveLastForecast(forecast: WeatherForecast)
+    suspend fun saveLastForecast(forecast: WeatherForecast) //Q10
     suspend fun getLastForecast(): WeatherForecast?
     fun observeFavourites(): Flow<List<FavouritePlace>>
-    suspend fun saveFavourites(favourites: List<FavouritePlace>)
+    suspend fun saveFavourites(favourites: List<FavouritePlace>) //Q10
     fun observeSettings(): Flow<UserSettings>
-    suspend fun saveSettings(settings: UserSettings)
+    suspend fun saveSettings(settings: UserSettings) //Q10
 }
 
-class DataStoreWeatherStorage(private val context: Context) : WeatherLocalStorage {
+class DataStoreWeatherStorage(private val context: Context) : WeatherLocalStorage { //Q6 Cached: Last forecast, favourites, settings
 
     private val json = Json { ignoreUnknownKeys = true }
 

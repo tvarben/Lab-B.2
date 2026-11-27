@@ -6,6 +6,7 @@ import org.junit.Test
 import se.kth.hi1033.weatherapp.model.CoordinateValidator
 import se.kth.hi1033.weatherapp.model.CoordinateValidator.ValidationResult
 
+//Q28
 class CoordinateValidatorTest {
 
     @Test

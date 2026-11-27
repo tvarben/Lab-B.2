@@ -4,12 +4,17 @@ package se.kth.hi1033.weatherapp.model
  * Pure Kotlin validator for user-entered latitude and longitude strings.
  */
 object CoordinateValidator {
+    //Q21 our domain is not big so enforcing business invariants is not that difficult. This object was ai generated and shouldn't be a separate file.
+    //Personally, this type of invariant should already bee enforced inside the domain model as a private method, not as a separate object and file.
 
+
+    //Q23 Section 3 & 4 -> D-09 resulted in this file
     sealed class ValidationResult {
         data class Valid(val latitude: Double, val longitude: Double) : ValidationResult()
         data class Invalid(val reason: String) : ValidationResult()
     }
 
+    //Q25
     fun validate(latInput: String, lonInput: String): ValidationResult {
         val normalizedLat = latInput.trim().replace(',', '.')
         val normalizedLon = lonInput.trim().replace(',', '.')

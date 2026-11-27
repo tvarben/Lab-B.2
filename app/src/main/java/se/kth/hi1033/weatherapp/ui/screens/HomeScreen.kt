@@ -62,7 +62,7 @@ import se.kth.hi1033.weatherapp.ui.state.WeatherUiState
 
 @Composable
 fun HomeScreen(
-    uiState: WeatherUiState,
+    uiState: WeatherUiState, //Q9 take it and display
     onSearchModeChange: (SearchMode) -> Unit,
     onCityQueryChange: (String) -> Unit,
     onLatInputChange: (String) -> Unit,

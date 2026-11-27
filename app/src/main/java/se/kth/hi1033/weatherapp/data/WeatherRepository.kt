@@ -55,7 +55,7 @@ class WeatherRepository(
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
 ) {
 
-    suspend fun getForecast(
+    suspend fun getForecast( //Q1
         latitude: Double,
         longitude: Double,
         locationName: String
@@ -69,7 +69,7 @@ class WeatherRepository(
                     notice = "You are offline. Showing last saved forecast for ${cached.locationName}."
                 )
             } else {
-                WeatherResult.Error(
+                WeatherResult.Error( //Q15 return error object which will invoke EmptyOrErrorInitialState
                     errorType = WeatherErrorType.OFFLINE,
                     message = "No internet connection and no saved forecast available yet."
                 )
@@ -180,8 +180,8 @@ class WeatherRepository(
         localStorage.saveSettings(settings)
     }
 
-    private fun classifyException(e: Exception): Pair<WeatherErrorType, String> = when (e) {
-        is SocketTimeoutException -> WeatherErrorType.TIMEOUT to "Request timed out. Please try again."
+    private fun classifyException(e: Exception): Pair<WeatherErrorType, String> = when (e) { //Q14 this is the "data exception handler". All get caught by Exception because it covers all, then depending on exception, specify error request. Like in java.
+        is SocketTimeoutException -> WeatherErrorType.TIMEOUT to "Request timed out. Please try again." //Q13
         is HttpException -> WeatherErrorType.HTTP_ERROR to "Server error (HTTP ${e.code()}). Please try again later."
         is SerializationException -> WeatherErrorType.PARSE_ERROR to "Received unexpected data format from server."
         is IOException -> WeatherErrorType.OFFLINE to "Network error. Check your internet connection."

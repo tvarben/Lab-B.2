@@ -20,7 +20,7 @@ class MainActivity : ComponentActivity() {
             val viewModel: WeatherViewModel = viewModel(
                 factory = WeatherViewModelFactory(applicationContext)
             )
-            val uiState by viewModel.uiState.collectAsState()
+            val uiState by viewModel.uiState.collectAsState() //Q9 always collect viewmodel state
 
             WeatherAppTheme(darkTheme = uiState.settings.useDarkTheme) {
                 WeatherNavHost(

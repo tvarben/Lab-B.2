@@ -22,7 +22,7 @@ data class WeatherUiState(
     val forecast: WeatherForecast? = null,
     val isFromCache: Boolean = false,
     val statusNotice: String? = null,
-    val errorMessage: String? = null,
+    val errorMessage: String? = null, //Q17 -> StatusBanners / EmptyOrInitialState
     val favourites: List<FavouritePlace> = emptyList(),
     val settings: UserSettings = UserSettings()
 ) {

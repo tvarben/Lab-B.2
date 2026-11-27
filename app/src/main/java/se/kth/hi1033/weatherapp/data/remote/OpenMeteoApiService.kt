@@ -11,7 +11,7 @@ import java.util.concurrent.TimeUnit
 
 interface OpenMeteoForecastApi {
     @GET("v1/forecast")
-    suspend fun getForecast(
+    suspend fun getForecast( //Q1
         @Query("latitude") latitude: Double,
         @Query("longitude") longitude: Double,
         @Query("hourly") hourly: String = "temperature_2m,weather_code,wind_speed_10m,precipitation",

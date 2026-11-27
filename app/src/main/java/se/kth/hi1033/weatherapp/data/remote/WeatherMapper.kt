@@ -14,9 +14,9 @@ import java.util.Locale
  * Pure Kotlin mapper converting Open-Meteo JSON DTOs into internal domain models.
  * Guards against missing fields and mismatched parallel array lengths.
  */
-object WeatherMapper {
-
-    fun mapForecast(
+object WeatherMapper { //Q2 mapForecast maps to DTOs that can be transformed to the domain model
+    //Q3 we use nullables
+    fun mapForecast( //Q18, all of them were hard
         dto: ForecastResponseDto,
         locationName: String,
         todayDateIso: String = LocalDate.now().toString(),
@@ -70,7 +70,7 @@ object WeatherMapper {
             }
     }
 
-    private fun mapHourlyList(hourly: HourlyDto?): List<HourlyForecast> {
+    private fun mapHourlyList(hourly: HourlyDto?): List<HourlyForecast> { //Q24 Already integrated
         if (hourly == null || hourly.time.isEmpty()) return emptyList()
         return hourly.time.mapIndexed { index, timeIso ->
             val hourLabel = if (timeIso.length >= 16) timeIso.substring(11, 16) else timeIso
